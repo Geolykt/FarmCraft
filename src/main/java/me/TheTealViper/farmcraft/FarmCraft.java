@@ -31,6 +31,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.profile.PlayerTextures;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 
@@ -527,14 +528,16 @@ public class FarmCraft extends UtilityEquippedJavaPlugin implements Listener{
         block.setType(Material.PLAYER_HEAD);
         Skull skullData = (Skull)block.getState();
         skullData.setPlayerProfile(getNonPlayerProfile(skinUrl));
-        skullData.update(true, false);
+        skullData.update();
     }
 
     public static PlayerProfile getNonPlayerProfile(String skinURL) {
         //skinURL is the hash value from minecraft-heads.net ONLY, not the full URL
         PlayerProfile newSkinProfile = Bukkit.createProfile(UUID.randomUUID());
         try {
-            newSkinProfile.getTextures().setSkin(new URL("http://textures.minecraft.net/texture/" + skinURL));
+            PlayerTextures textures = newSkinProfile.getTextures();
+            textures.setSkin(new URL("http://textures.minecraft.net/texture/" + skinURL));
+            newSkinProfile.setTextures(textures);
         } catch (MalformedURLException e) {
             throw new IllegalStateException("Illegal skin URL: " + skinURL, e);
         }

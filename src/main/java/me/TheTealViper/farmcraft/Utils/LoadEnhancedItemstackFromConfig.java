@@ -25,6 +25,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.profile.PlayerTextures;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.google.gson.JsonObject;
@@ -189,7 +190,9 @@ public class LoadEnhancedItemstackFromConfig implements Listener{
 					     SkullMeta skullMeta = (SkullMeta) meta;
 					     PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID());
 					     try {
-					         profile.getTextures().setSkin(new URL(skinUrl));
+					         PlayerTextures textures = profile.getTextures();
+					         textures.setSkin(new URL(skinUrl));
+					         profile.setTextures(textures);
 					     } catch (MalformedURLException e) {
 					         plugin.getSLF4JLogger().info("Skin URL {} is invalid", skinUrl, e);
 					     }
