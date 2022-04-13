@@ -47,8 +47,6 @@ public class hologramShit {
 //				}
 			}
 		}
-		Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {public void run() {
-			h.delete();
-		}}, plugin.getConfig().getInt("Hologram_Duration") * 20);
+		Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> h.delete(), plugin.getConfig().getInt("Hologram_Duration") * 20);
 	}
 }

@@ -1,16 +1,18 @@
 package me.TheTealViper.farmcraft.Utils;
 
-import java.lang.reflect.Field;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.craftbukkit.libs.org.apache.commons.codec.binary.Base64;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -24,10 +26,9 @@ import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
 
 public class LoadEnhancedItemstackFromConfig implements Listener{
 	private UtilityEquippedJavaPlugin plugin = null;
@@ -95,6 +96,9 @@ public class LoadEnhancedItemstackFromConfig implements Listener{
 		item = (sec == null || !sec.contains("id")) ? null : new ItemStack(Material.getMaterial(sec.getString("id")));
 		
 		//Initiate Meta
+		if (item == null) {
+		    throw new IllegalStateException("!!!");
+		}
 		ItemMeta meta = item.getItemMeta();
 		
 		//Handle amount
@@ -180,20 +184,16 @@ public class LoadEnhancedItemstackFromConfig implements Listener{
 				switch(tag) {
 					case "playerskullskin":
 					     JsonParser parser = new JsonParser();
-					     JsonObject o = parser.parse(new String(Base64.decodeBase64(value))).getAsJsonObject();
+					     JsonObject o = parser.parse(new String(Base64.getDecoder().decode(value))).getAsJsonObject();
 					     String skinUrl = o.get("textures").getAsJsonObject().get("SKIN").getAsJsonObject().get("url").getAsString();
 					     SkullMeta skullMeta = (SkullMeta) meta;
-					     GameProfile profile = new GameProfile(UUID.randomUUID(), null);
-					     byte[] encodedData = Base64.encodeBase64(("{textures:{SKIN:{url:\"" + skinUrl + "\"}}}").getBytes());
-					     profile.getProperties().put("textures", new Property("textures", new String(encodedData)));
-					     Field profileField = null;
+					     PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID());
 					     try {
-					       profileField = skullMeta.getClass().getDeclaredField("profile");
-					       profileField.setAccessible(true);
-					       profileField.set(skullMeta, profile);
-					     } catch (Exception e) {
-					       e.printStackTrace();
+					         profile.getTextures().setSkin(new URL(skinUrl));
+					     } catch (MalformedURLException e) {
+					         plugin.getSLF4JLogger().info("Skin URL {} is invalid", skinUrl, e);
 					     }
+					     skullMeta.setPlayerProfile(profile);
 					     meta = skullMeta;
 						break;
 					case "vanilladurability":

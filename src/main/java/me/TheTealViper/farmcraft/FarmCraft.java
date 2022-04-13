@@ -3,6 +3,8 @@ package me.TheTealViper.farmcraft;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,13 +17,11 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Skull;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-//import org.bukkit.craftbukkit.libs.jline.internal.InputStreamReader; //Import this to break only Paper users >:)
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -31,16 +31,12 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
-import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
+import com.destroystokyo.paper.profile.PlayerProfile;
 
 import me.TheTealViper.farmcraft.Utils.LoadItemstackFromConfig;
 import me.TheTealViper.farmcraft.Utils.PluginFile;
-import me.TheTealViper.farmcraft.Utils.ReflectionUtils;
 import me.TheTealViper.farmcraft.Utils.UtilityEquippedJavaPlugin;
-import net.minecraft.core.BlockPosition;
  
 public class FarmCraft extends UtilityEquippedJavaPlugin implements Listener{
 	public Map<String, Crop> cropMap = new HashMap<String, Crop>();
@@ -51,16 +47,19 @@ public class FarmCraft extends UtilityEquippedJavaPlugin implements Listener{
 	public static boolean debug = false;
 	public Map<Player, Long> purgeInfo = new HashMap<Player, Long>();
  
+    @Override
     public void onEnable(){
     	StartupPlugin(this, "50031");
     	
     	loadShit();
     }
    
+    @Override
     public void onDisable(){
         //getLogger().info("FarmCraft from TheTealViper shutting down. Bshzzzzzz");
     }
     
+    @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
         if(sender instanceof Player){
             Player p = (Player) sender;
@@ -523,34 +522,30 @@ public class FarmCraft extends UtilityEquippedJavaPlugin implements Listener{
     		}
     	}
     }
-    
+
     public static void setSkullUrl(String skinUrl, Block block) {
         block.setType(Material.PLAYER_HEAD);
         Skull skullData = (Skull)block.getState();
-        try{
-	        Object reflectWorld = ReflectionUtils.invokeMethod(block, "getWorld");
-	        Object reflectHandle = ReflectionUtils.invokeMethod(reflectWorld, "getHandle");
-	        BlockPosition blockPosition = new BlockPosition(block.getX(), block.getY(), block.getZ());//ReflectionUtils.instantiateObject("BlockPosition", ReflectionUtils.PackageType.MINECRAFT_SERVER, block.getX(), block.getY(), block.getZ());
-	        Object reflectTileEntity = ReflectionUtils.invokeMethod(reflectHandle, "getTileEntity", blockPosition);
-	        ReflectionUtils.invokeMethod(reflectTileEntity, "setGameProfile", getNonPlayerProfile(skinUrl));
-        }catch(Exception e){
-        	e.printStackTrace();
-        }
-        block.getState().setRawData((byte) 1);
-        block.getState().update(true);
+        skullData.setPlayerProfile(getNonPlayerProfile(skinUrl));
+        skullData.update(true, false);
     }
-    public static GameProfile getNonPlayerProfile(String skinURL) {
-    	//skinURL is the hash value from minecraft-heads.net ONLY, not the full URL
-        GameProfile newSkinProfile = new GameProfile(UUID.randomUUID(), null);
-        newSkinProfile.getProperties().put("textures", new Property("textures", Base64Coder.encodeString("{textures:{SKIN:{url:\"http://textures.minecraft.net/texture/" + skinURL + "\"}}}")));
+
+    public static PlayerProfile getNonPlayerProfile(String skinURL) {
+        //skinURL is the hash value from minecraft-heads.net ONLY, not the full URL
+        PlayerProfile newSkinProfile = Bukkit.createProfile(UUID.randomUUID());
+        try {
+            newSkinProfile.getTextures().setSkin(new URL("http://textures.minecraft.net/texture/" + skinURL));
+        } catch (MalformedURLException e) {
+            throw new IllegalStateException("Illegal skin URL: " + skinURL, e);
+        }
         return newSkinProfile;
     }
-    
+
     private void loadShit(){
-    	File folder = new File("plugins/FarmCraft/crops");
+    	File folder = new File(getDataFolder(), "crops");
     	if(!folder.exists()){
     		try {
-				YamlConfiguration.loadConfiguration(new InputStreamReader(getResource("corn.yml"))).save("plugins/FarmCraft/crops/corn.yml");
+				YamlConfiguration.loadConfiguration(new InputStreamReader(getResource("corn.yml"))).save(new File(folder, "corn.yml"));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -586,7 +581,7 @@ public class FarmCraft extends UtilityEquippedJavaPlugin implements Listener{
     		System.out.println(cropFile.getName().replace(".yml", "") + " loaded as crop successfully.");
     	}
     	//Now we schedule the check
-    	Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {public void run() {
+    	Bukkit.getScheduler().scheduleSyncRepeatingTask(this, () -> {
 			for(String cropName : growingSeeds.getKeys(false)){
 				if(cropName.equals("Percentages"))
 					continue;
@@ -621,7 +616,7 @@ public class FarmCraft extends UtilityEquippedJavaPlugin implements Listener{
 					}
 				}
 			}
-		}}, 0, 100);
+		}, 0, 100);
     }
 
     String formatString(String s, String locString){
